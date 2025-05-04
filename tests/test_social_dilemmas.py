@@ -3,6 +3,10 @@ Unit tests for social dilemmas simulation module.
 
 These tests verify the correctness of the social dilemma simulations
 and ensure that agent strategies behave as expected.
+
+@author Theodore Mui
+@version 1.0.1
+@date May 4, 2025
 """
 
 import unittest
