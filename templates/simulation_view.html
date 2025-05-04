@@ -1,0 +1,727 @@
+{% extends "layout.html" %}
+
+{% block title %}Simulation Results: {{ simulation.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1>{{ simulation.name }}</h1>
+                <div>
+                    <a href="{{ url_for('simulation_history') }}" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-list me-2"></i>Back to History
+                    </a>
+                    <a href="{{ url_for('social_dilemmas') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Simulation
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Simulation Info -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark text-light border-0 shadow">
+                <div class="card-header bg-primary bg-gradient">
+                    <h3 class="mb-0">Simulation Overview</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="card-title">Configuration</h5>
+                            <table class="table table-sm table-dark">
+                                <tbody>
+                                    <tr>
+                                        <th scope="row">Name</th>
+                                        <td>{{ simulation.name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Description</th>
+                                        <td>{{ simulation.description or "No description provided" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Dilemma Type</th>
+                                        <td>
+                                            {% if simulation.game_type == 'tragedy_commons' %}
+                                                Tragedy of the Commons
+                                            {% elif simulation.game_type == 'free_rider' %}
+                                                Free Rider Problem
+                                            {% elif simulation.game_type == 'public_goods' %}
+                                                Public Goods Game
+                                            {% else %}
+                                                {{ simulation.game_type }}
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Rounds</th>
+                                        <td>{{ simulation.total_rounds or '-' }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Agents</th>
+                                        <td>{{ simulation.num_agents or '-' }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="card-title">Details</h5>
+                            <table class="table table-sm table-dark">
+                                <tbody>
+                                    <tr>
+                                        <th scope="row">Run Date</th>
+                                        <td>{{ simulation.formatted_date }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Simulation ID</th>
+                                        <td>{{ simulation.id }}</td>
+                                    </tr>
+                                    {% if simulation.config_json and simulation.config_json.get('parameters') %}
+                                        {% for param_name, param_value in simulation.config_json.get('parameters', {}).items() %}
+                                            <tr>
+                                                <th scope="row">{{ param_name|replace('_', ' ')|title }}</th>
+                                                <td>{{ param_value }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5 class="card-title">Agent Strategies</h5>
+                            <div class="d-flex flex-wrap gap-3">
+                                {% if simulation.config_json and simulation.config_json.get('strategies') %}
+                                    {% for strategy, count in simulation.config_json.get('strategies', {}).items() %}
+                                        <div class="strategy-badge p-2 border rounded bg-dark text-center">
+                                            <div class="badge bg-secondary p-2 mb-1">{{ count }}</div>
+                                            <div class="small">{{ strategy|replace('_', ' ')|title }}</div>
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <p class="text-muted">No strategy information available</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart Tabs -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-dark">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" id="chart-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic-charts" type="button" role="tab" aria-controls="basic-charts" aria-selected="true">Basic Charts</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="distribution-tab" data-bs-toggle="tab" data-bs-target="#distribution-charts" type="button" role="tab" aria-controls="distribution-charts" aria-selected="false">Distribution</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced-charts" type="button" role="tab" aria-controls="advanced-charts" aria-selected="false">Advanced Analysis</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="details-tab" data-bs-toggle="tab" data-bs-target="#detailed-results" type="button" role="tab" aria-controls="detailed-results" aria-selected="false">Detailed Results</button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content" id="chart-tabs-content">
+                        <!-- Basic Charts Tab -->
+                        <div class="tab-pane fade show active" id="basic-charts" role="tabpanel" aria-labelledby="basic-tab">
+                            <div class="row mt-3">
+                                <!-- Resource Size Chart -->
+                                <div class="col-md-6 mb-4">
+                                    <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                        <div class="chart-title mb-3">
+                                            <i class="fas fa-info-circle text-info me-1"></i> 
+                                            <span>Resource Size Over Time</span>
+                                        </div>
+                                        <div style="height:350px; width:100%; position:relative;">
+                                            <canvas id="resource-chart" width="800" height="350"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Strategy Performance -->
+                                <div class="col-md-6 mb-4">
+                                    <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                        <div class="chart-title mb-3">
+                                            <i class="fas fa-info-circle text-info me-1"></i> 
+                                            <span>Strategy Performance</span>
+                                        </div>
+                                        <div style="height:350px; width:100%; position:relative;">
+                                            <canvas id="performance-chart" width="800" height="350"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Dilemma-specific charts -->
+                                <div class="col-12 mb-4 dilemma-specific-chart tc-specific">
+                                    <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                        <div class="chart-title mb-3">
+                                            <i class="fas fa-info-circle text-info me-1"></i> 
+                                            <span>Strategy Harvest Over Time</span>
+                                        </div>
+                                        <div style="height:400px; width:100%; position:relative;">
+                                            <canvas id="harvest-chart" width="800" height="400"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Distribution Charts Tab -->
+                        <div class="tab-pane fade" id="distribution-charts" role="tabpanel" aria-labelledby="distribution-tab">
+                            <div class="row mt-3">
+                                <div class="col-md-6 mb-4">
+                                    <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                        <div class="chart-title mb-3">
+                                            <i class="fas fa-info-circle text-info me-1"></i> 
+                                            <span>Final Resource Distribution</span>
+                                        </div>
+                                        <div style="height:400px; width:100%; position:relative;">
+                                            <canvas id="distribution-chart" width="800" height="400"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-4">
+                                    <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                        <div class="chart-title mb-3">
+                                            <i class="fas fa-info-circle text-info me-1"></i> 
+                                            <span>Strategy Action Distribution</span>
+                                        </div>
+                                        <div style="height:400px; width:100%; position:relative;">
+                                            <canvas id="actions-chart" width="800" height="400"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Advanced Analysis Tab -->
+                        <div class="tab-pane fade" id="advanced-charts" role="tabpanel" aria-labelledby="advanced-tab">
+                            <div class="row mt-3">
+                                <div class="col-md-6 mb-4">
+                                    <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                        <div class="chart-title mb-3">
+                                            <i class="fas fa-info-circle text-info me-1"></i> 
+                                            <span>Sustainability Impact by Strategy</span>
+                                        </div>
+                                        <div style="height:400px; width:100%; position:relative; background-color: rgba(50,50,50,0.1); border-radius: 4px;">
+                                            <canvas id="sustainability-chart" width="800" height="400"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-4">
+                                    <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                        <div class="chart-title mb-3">
+                                            <i class="fas fa-info-circle text-info me-1"></i> 
+                                            <span>Social Welfare Contribution by Strategy</span>
+                                        </div>
+                                        <div style="height:400px; width:100%; position:relative; background-color: rgba(50,50,50,0.1); border-radius: 4px;">
+                                            <canvas id="welfare-chart" width="800" height="400"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Detailed Results Tab -->
+                        <div class="tab-pane fade" id="detailed-results" role="tabpanel" aria-labelledby="details-tab">
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <div class="card bg-dark text-light border-0 shadow mb-4">
+                                        <div class="card-header bg-primary bg-gradient">
+                                            <h4 class="mb-0">Detailed Results</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="info-text mb-3">
+                                                <i class="fas fa-info-circle text-info me-1"></i>
+                                                Hover over table headers for more information about each metric
+                                            </div>
+                                            <div class="table-responsive">
+                                                <table class="table table-striped table-hover" id="results-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th data-bs-toggle="tooltip" data-bs-placement="top" title="The strategy used by the agents">Strategy</th>
+                                                            <th data-bs-toggle="tooltip" data-bs-placement="top" title="The average score achieved by agents using this strategy">Avg. Score</th>
+                                                            <th data-bs-toggle="tooltip" data-bs-placement="top" title="How this strategy affects sustainability of shared resources">Sustainability Impact</th>
+                                                            <th data-bs-toggle="tooltip" data-bs-placement="top" title="Contribution to overall social welfare">Social Welfare</th>
+                                                            <th data-bs-toggle="tooltip" data-bs-placement="top" title="Total resources accumulated by this strategy group">Total Resources</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <!-- Will be populated by JavaScript -->
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Raw Data Viewer -->
+                                    <div class="card bg-dark text-light border-0 shadow">
+                                        <div class="card-header bg-secondary">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <h5 class="mb-0">Raw Simulation Data</h5>
+                                                <button class="btn btn-sm btn-outline-light" type="button" data-bs-toggle="collapse" data-bs-target="#rawDataCollapse">
+                                                    <i class="fas fa-code me-1"></i> Toggle
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="collapse" id="rawDataCollapse">
+                                            <div class="card-body">
+                                                <pre class="bg-dark p-3" style="max-height: 400px; overflow-y: auto;"><code id="raw-data-json">{{ simulation.result_data }}</code></pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript to render charts -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if there's a hash in the URL to activate a specific tab
+    const hash = window.location.hash;
+    if (hash) {
+        const tabId = hash.replace('#', '');
+        const tab = document.querySelector(`button[data-bs-target="#${tabId}"]`);
+        if (tab) {
+            const tabInstance = new bootstrap.Tab(tab);
+            tabInstance.show();
+            
+            // Scroll to the tab
+            setTimeout(() => {
+                window.scrollTo({
+                    top: document.querySelector(`#${tabId}`).offsetTop - 100,
+                    behavior: 'smooth'
+                });
+            }, 300);
+        }
+    }
+    // Parse the simulation data
+    const simulationData = {
+        config: {{ simulation.config_snapshot|safe if simulation.config_snapshot else '{}' }},
+        results: {{ simulation.result_data|safe if simulation.result_data else '{}' }}
+    };
+    
+    if (!simulationData.results || !simulationData.config) {
+        console.error("Invalid simulation data");
+        return;
+    }
+    
+    console.log("Loaded simulation data:", simulationData);
+    
+    // Helper functions
+    function humanizeStrategyName(name) {
+        return name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+    
+    function getStrategyColor(strategy, index, alpha = 1) {
+        const colorMap = {
+            'greedy': `rgba(220, 53, 69, ${alpha})`,         // Red
+            'sustainable': `rgba(25, 135, 84, ${alpha})`,    // Green
+            'adaptive': `rgba(13, 110, 253, ${alpha})`,      // Blue
+            'fair_share': `rgba(255, 193, 7, ${alpha})`,     // Yellow
+            'random': `rgba(108, 117, 125, ${alpha})`,       // Gray
+            'tit_for_tat': `rgba(111, 66, 193, ${alpha})`,   // Purple
+            'grudger': `rgba(214, 51, 132, ${alpha})`,       // Pink
+            'pavlov': `rgba(32, 201, 151, ${alpha})`         // Teal
+        };
+        
+        return colorMap[strategy] || 
+               `hsla(${(index * 60) % 360}, 70%, 60%, ${alpha})`;
+    }
+
+    // Populate detailed results table
+    function populateResultsTable() {
+        const resultsTable = document.getElementById('results-table');
+        const tbody = resultsTable.querySelector('tbody');
+        tbody.innerHTML = '';
+
+        if (simulationData.results && simulationData.results.final_stats && 
+            simulationData.results.final_stats.strategies) {
+            
+            const strategies = simulationData.results.final_stats.strategies;
+            
+            for (const strategy in strategies) {
+                const row = document.createElement('tr');
+                const data = strategies[strategy];
+                
+                row.innerHTML = `
+                    <td>${humanizeStrategyName(strategy)}</td>
+                    <td>${(data.score || 0).toFixed(2)}</td>
+                    <td>${((data.sustainability_impact || 0) * 100).toFixed(2)}%</td>
+                    <td>${((data.social_welfare || 0) * 100).toFixed(2)}%</td>
+                    <td>${(data.total_resources || 0).toFixed(2)}</td>
+                `;
+                
+                tbody.appendChild(row);
+            }
+        } else {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td colspan="5" class="text-center">No detailed results available</td>`;
+            tbody.appendChild(row);
+        }
+    }
+    
+    // Render all charts
+    function renderCharts() {
+        const results = simulationData.results;
+        
+        // Determine what strategies are used
+        const strategies = [];
+        if (results && results.final_stats && results.final_stats.strategies) {
+            for (const strategy in results.final_stats.strategies) {
+                strategies.push(strategy);
+            }
+        }
+        
+        // --- BASIC CHARTS ---
+        
+        // Resource Size Chart
+        if (results && results.rounds && results.rounds.length > 0) {
+            const resourceCanvas = document.getElementById('resource-chart');
+            if (resourceCanvas) {
+                const ctx = resourceCanvas.getContext('2d');
+                
+                // Create datasets
+                const resourceData = {
+                    labels: results.rounds.map((round, i) => `Round ${i+1}`),
+                    datasets: [{
+                        label: 'Resource Size',
+                        data: results.rounds.map(round => round.resource_size),
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 2,
+                        tension: 0.1
+                    }]
+                };
+                
+                new Chart(ctx, {
+                    type: 'line',
+                    data: resourceData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Resource Size'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Strategy Performance Chart
+        if (results && results.final_stats && results.final_stats.strategies) {
+            const performanceCanvas = document.getElementById('performance-chart');
+            if (performanceCanvas) {
+                const ctx = performanceCanvas.getContext('2d');
+                
+                const performanceData = {
+                    labels: strategies.map(humanizeStrategyName),
+                    datasets: [{
+                        label: 'Average Score',
+                        data: strategies.map(strategy => {
+                            return results.final_stats.strategies[strategy]?.score || 0;
+                        }),
+                        backgroundColor: strategies.map((strategy, index) => getStrategyColor(strategy, index, 0.7)),
+                        borderColor: strategies.map((strategy, index) => getStrategyColor(strategy, index)),
+                        borderWidth: 1
+                    }]
+                };
+                
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: performanceData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Average Score'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Harvest Chart (Tragedy of Commons)
+        if (results && results.rounds && results.rounds.length > 0 && 
+            simulationData.config.dilemma_type === 'tragedy_commons') {
+            
+            const harvestCanvas = document.getElementById('harvest-chart');
+            if (harvestCanvas) {
+                const ctx = harvestCanvas.getContext('2d');
+                
+                // Create datasets for each strategy
+                const datasets = strategies.map((strategy, index) => {
+                    return {
+                        label: humanizeStrategyName(strategy),
+                        data: results.rounds.map(round => {
+                            return round.strategy_harvests?.[strategy] || 0;
+                        }),
+                        borderColor: getStrategyColor(strategy, index),
+                        backgroundColor: getStrategyColor(strategy, index, 0.1),
+                        borderWidth: 2,
+                        tension: 0.1,
+                        fill: false
+                    };
+                });
+                
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: results.rounds.map((_, i) => `Round ${i+1}`),
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Harvest Amount'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Show only the relevant dilemma-specific chart
+            document.querySelectorAll('.dilemma-specific-chart').forEach(el => {
+                el.style.display = 'none';
+            });
+            document.querySelector('.tc-specific').style.display = 'block';
+        }
+        
+        // --- DISTRIBUTION CHARTS ---
+        
+        // Resource Distribution Chart
+        if (results && results.final_stats && results.final_stats.strategies) {
+            const distributionCanvas = document.getElementById('distribution-chart');
+            if (distributionCanvas) {
+                const ctx = distributionCanvas.getContext('2d');
+                
+                const distributionData = {
+                    labels: strategies.map(humanizeStrategyName),
+                    datasets: [{
+                        label: 'Total Resources',
+                        data: strategies.map(strategy => {
+                            return results.final_stats.strategies[strategy]?.total_resources || 0;
+                        }),
+                        backgroundColor: strategies.map((strategy, index) => getStrategyColor(strategy, index, 0.7)),
+                        borderColor: strategies.map((strategy, index) => getStrategyColor(strategy, index)),
+                        borderWidth: 1
+                    }]
+                };
+                
+                new Chart(ctx, {
+                    type: 'pie',
+                    data: distributionData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Actions Distribution Chart
+        if (results && results.final_stats && results.final_stats.strategies) {
+            const actionsCanvas = document.getElementById('actions-chart');
+            if (actionsCanvas) {
+                const ctx = actionsCanvas.getContext('2d');
+                
+                // Get action categories based on dilemma type
+                let actionLabels = ['Sustainable', 'Unsustainable'];
+                if (simulationData.config.dilemma_type === 'public_goods') {
+                    actionLabels = ['Contribute', 'Free Ride'];
+                } else if (simulationData.config.dilemma_type === 'free_rider') {
+                    actionLabels = ['Contribute', 'Free Ride'];
+                }
+                
+                const datasets = strategies.map((strategy, index) => {
+                    // Check if we have action data
+                    const actionData = results.final_stats.strategies[strategy]?.actions || {};
+                    
+                    return {
+                        label: humanizeStrategyName(strategy),
+                        data: [
+                            actionData.sustainable || 0,
+                            actionData.unsustainable || 0
+                        ],
+                        backgroundColor: getStrategyColor(strategy, index, 0.7),
+                        borderColor: getStrategyColor(strategy, index),
+                        borderWidth: 1
+                    };
+                });
+                
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: actionLabels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Number of Actions'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // --- ADVANCED CHARTS ---
+        
+        // Sustainability Impact Chart
+        if (results && results.final_stats && results.final_stats.strategies) {
+            const sustainabilityCanvas = document.getElementById('sustainability-chart');
+            if (sustainabilityCanvas) {
+                const ctx = sustainabilityCanvas.getContext('2d');
+                
+                const sustainabilityData = {
+                    labels: strategies.map(humanizeStrategyName),
+                    datasets: [{
+                        label: 'Sustainability Impact',
+                        data: strategies.map(strategy => {
+                            const stratData = results.final_stats.strategies[strategy] || {};
+                            const impact = stratData.sustainability_impact || 0;
+                            return impact * 100; // Scale to percentage
+                        }),
+                        backgroundColor: strategies.map((strategy, index) => getStrategyColor(strategy, index, 0.7)),
+                        borderColor: strategies.map((strategy, index) => getStrategyColor(strategy, index)),
+                        borderWidth: 1
+                    }]
+                };
+                
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: sustainabilityData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Impact %'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Social Welfare Chart
+        if (results && results.final_stats && results.final_stats.strategies) {
+            const welfareCanvas = document.getElementById('welfare-chart');
+            if (welfareCanvas) {
+                const ctx = welfareCanvas.getContext('2d');
+                
+                const welfareData = {
+                    labels: strategies.map(humanizeStrategyName),
+                    datasets: [{
+                        label: 'Social Welfare Contribution',
+                        data: strategies.map(strategy => {
+                            const stratData = results.final_stats.strategies[strategy] || {};
+                            const welfare = stratData.social_welfare || 0;
+                            return welfare * 100; // Scale to percentage
+                        }),
+                        backgroundColor: strategies.map((strategy, index) => getStrategyColor(strategy, index, 0.7)),
+                        borderColor: strategies.map((strategy, index) => getStrategyColor(strategy, index)),
+                        borderWidth: 1
+                    }]
+                };
+                
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: welfareData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Contribution %'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    }
+    
+    // Format the raw JSON data for better display
+    function formatRawData() {
+        const rawDataElement = document.getElementById('raw-data-json');
+        if (rawDataElement) {
+            try {
+                const jsonData = JSON.parse(rawDataElement.textContent);
+                rawDataElement.textContent = JSON.stringify(jsonData, null, 2);
+            } catch (e) {
+                console.error("Error formatting raw data:", e);
+            }
+        }
+    }
+    
+    // Initialize the page
+    populateResultsTable();
+    renderCharts();
+    formatRawData();
+    
+    // Ensure charts render properly on tab switch
+    const tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
+    tabEls.forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function(event) {
+            // Trigger a resize event to redraw charts in the newly shown tab
+            window.dispatchEvent(new Event('resize'));
+        });
+    });
+});
+</script>
+{% endblock %}

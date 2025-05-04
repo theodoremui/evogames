@@ -1,0 +1,934 @@
+{% extends "layout.html" %}
+
+{% block title %}Game Theory Results: {{ simulation.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1>{{ simulation.name }}</h1>
+                <div>
+                    <a href="{{ url_for('simulation_history') }}" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-list me-2"></i>Back to History
+                    </a>
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Game Theory Lab
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Simulation Info -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark text-light border-0 shadow">
+                <div class="card-header bg-primary bg-gradient">
+                    <h3 class="mb-0">Simulation Overview</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="card-title">Configuration</h5>
+                            <table class="table table-sm table-dark">
+                                <tbody>
+                                    <tr>
+                                        <th scope="row">Name</th>
+                                        <td>{{ simulation.name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Description</th>
+                                        <td>{{ simulation.description or "No description provided" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Game Type</th>
+                                        <td>
+                                            {% if simulation.game_type == 'prisoners_dilemma' %}
+                                                Prisoner's Dilemma
+                                            {% elif simulation.game_type == 'ultimatum_game' %}
+                                                Ultimatum Game
+                                            {% elif simulation.game_type == 'game_of_chicken' %}
+                                                Game of Chicken
+                                            {% else %}
+                                                {{ simulation.game_type }}
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Rounds</th>
+                                        <td>{{ simulation.total_rounds or '-' }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Agents</th>
+                                        <td>{{ simulation.num_agents or '-' }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="card-title">Details</h5>
+                            <table class="table table-sm table-dark">
+                                <tbody>
+                                    <tr>
+                                        <th scope="row">Run Date</th>
+                                        <td>{{ simulation.formatted_date }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Simulation ID</th>
+                                        <td>{{ simulation.id }}</td>
+                                    </tr>
+                                    {% if simulation.config_json and simulation.config_json.get('payoffs') %}
+                                        <tr>
+                                            <th scope="row">Payoffs</th>
+                                            <td>
+                                                <div class="small">
+                                                    T (Temptation): {{ simulation.config_json.payoffs.T }}<br>
+                                                    R (Reward): {{ simulation.config_json.payoffs.R }}<br>
+                                                    P (Punishment): {{ simulation.config_json.payoffs.P }}<br>
+                                                    S (Sucker): {{ simulation.config_json.payoffs.S }}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5 class="card-title">Agent Strategies</h5>
+                            <div class="d-flex flex-wrap gap-3">
+                                {% if simulation.config_json and simulation.config_json.get('strategies') %}
+                                    {% for strategy, count in simulation.config_json.get('strategies', {}).items() %}
+                                        <div class="strategy-badge p-2 border rounded bg-dark text-center">
+                                            <div class="badge bg-secondary p-2 mb-1">{{ count }}</div>
+                                            <div class="small">{{ strategy|replace('_', ' ')|title }}</div>
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <p class="text-muted">No strategy information available</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart Tabs -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-dark">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" id="chart-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic-charts" type="button" role="tab" aria-controls="basic-charts" aria-selected="true">Basic Charts</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="strategy-tab" data-bs-toggle="tab" data-bs-target="#strategy-charts" type="button" role="tab" aria-controls="strategy-charts" aria-selected="false">Strategy Analysis</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="interaction-tab" data-bs-toggle="tab" data-bs-target="#interaction-charts" type="button" role="tab" aria-controls="interaction-charts" aria-selected="false">Interaction Patterns</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="details-tab" data-bs-toggle="tab" data-bs-target="#detailed-results" type="button" role="tab" aria-controls="detailed-results" aria-selected="false">Detailed Results</button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content" id="chart-tabs-content">
+                        <!-- Basic Charts Tab -->
+                        <div class="tab-pane fade show active" id="basic-charts" role="tabpanel" aria-labelledby="basic-tab">
+                            <div class="row mt-3">
+                                <!-- Agent Scores Over Rounds -->
+                                <div class="col-md-6 mb-4">
+                                    <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                        <div class="chart-title mb-3">
+                                            <i class="fas fa-info-circle text-info me-1"></i> 
+                                            <span>Agent Scores Over Rounds</span>
+                                        </div>
+                                        <div style="height:350px; width:100%; position:relative;">
+                                            <canvas id="score-chart" width="800" height="350"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Strategy Performance -->
+                                <div class="col-md-6 mb-4">
+                                    <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                        <div class="chart-title mb-3">
+                                            <i class="fas fa-info-circle text-info me-1"></i> 
+                                            <span>Strategy Performance</span>
+                                        </div>
+                                        <div style="height:350px; width:100%; position:relative;">
+                                            <canvas id="strategy-performance-chart" width="800" height="350"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Cooperation vs Defection -->
+                                <div class="col-md-6 mb-4">
+                                    <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                        <div class="chart-title mb-3">
+                                            <i class="fas fa-info-circle text-info me-1"></i> 
+                                            <span>Cooperation vs Defection</span>
+                                        </div>
+                                        <div style="height:350px; width:100%; position:relative;">
+                                            <canvas id="cooperation-chart" width="800" height="350"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Interaction Outcomes -->
+                                <div class="col-md-6 mb-4">
+                                    <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                        <div class="chart-title mb-3">
+                                            <i class="fas fa-info-circle text-info me-1"></i> 
+                                            <span>Interaction Outcomes</span>
+                                        </div>
+                                        <div style="height:350px; width:100%; position:relative;">
+                                            <canvas id="interaction-chart" width="800" height="350"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Strategy Analysis Tab -->
+                        <div class="tab-pane fade" id="strategy-charts" role="tabpanel" aria-labelledby="strategy-tab">
+                            <div class="row mt-3">
+                                <div class="col-md-6 mb-4">
+                                    <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                        <div class="chart-title mb-3">
+                                            <i class="fas fa-info-circle text-info me-1"></i> 
+                                            <span>Strategy Cooperation Rate</span>
+                                        </div>
+                                        <div style="height:400px; width:100%; position:relative;">
+                                            <canvas id="strategy-cooperation-chart" width="800" height="400"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-4">
+                                    <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                        <div class="chart-title mb-3">
+                                            <i class="fas fa-info-circle text-info me-1"></i> 
+                                            <span>Average Points Per Round</span>
+                                        </div>
+                                        <div style="height:400px; width:100%; position:relative;">
+                                            <canvas id="points-per-round-chart" width="800" height="400"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Interaction Patterns Tab -->
+                        <div class="tab-pane fade" id="interaction-charts" role="tabpanel" aria-labelledby="interaction-tab">
+                            <div class="row mt-3">
+                                <div class="col-md-6 mb-4">
+                                    <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                        <div class="chart-title mb-3">
+                                            <i class="fas fa-info-circle text-info me-1"></i> 
+                                            <span>Interaction Types Over Time</span>
+                                        </div>
+                                        <div style="height:400px; width:100%; position:relative; background-color: rgba(50,50,50,0.1); border-radius: 4px;">
+                                            <canvas id="interaction-time-chart" width="800" height="400"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-4">
+                                    <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                        <div class="chart-title mb-3">
+                                            <i class="fas fa-info-circle text-info me-1"></i> 
+                                            <span>Strategy Pairwise Interactions</span>
+                                        </div>
+                                        <div style="height:400px; width:100%; position:relative; background-color: rgba(50,50,50,0.1); border-radius: 4px;">
+                                            <canvas id="pairwise-chart" width="800" height="400"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Detailed Results Tab -->
+                        <div class="tab-pane fade" id="detailed-results" role="tabpanel" aria-labelledby="details-tab">
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <div class="card bg-dark text-light border-0 shadow mb-4">
+                                        <div class="card-header bg-primary bg-gradient">
+                                            <h4 class="mb-0">Detailed Results</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="info-text mb-3">
+                                                <i class="fas fa-info-circle text-info me-1"></i>
+                                                This view shows detailed metrics from the simulation.
+                                            </div>
+                                            
+                                            <div class="mb-4">
+                                                <h5>Strategy Performance Summary</h5>
+                                                <div class="table-responsive">
+                                                    <table class="table table-dark table-hover table-striped">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Strategy</th>
+                                                                <th>Cooperation %</th>
+                                                                <th>Defection %</th>
+                                                                <th>Avg Points/Round</th>
+                                                                <th>Total Score</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="strategy-summary-body">
+                                                            <!-- Will be populated by JavaScript -->
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                            
+                                            <div>
+                                                <h5>Round-by-Round Evolution</h5>
+                                                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                                    <table class="table table-dark table-hover table-striped">
+                                                        <thead class="sticky-top bg-dark">
+                                                            <tr>
+                                                                <th>Round</th>
+                                                                <th>Cooperations</th>
+                                                                <th>Defections</th>
+                                                                <th>CC</th>
+                                                                <th>CD</th>
+                                                                <th>DC</th>
+                                                                <th>DD</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="rounds-body">
+                                                            <!-- Will be populated by JavaScript -->
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Store the simulation data for use in charts
+    const simulationData = {
+        config: {{ simulation.config_json|tojson }},
+        results: {{ simulation.result_json|tojson }}
+    };
+    
+    // Utility functions
+    function humanizeStrategyName(strategyName) {
+        return strategyName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+    
+    function getStrategyColor(strategy, index, alpha = 1) {
+        // A set of colors for strategies
+        const colors = [
+            `rgba(54, 162, 235, ${alpha})`,   // Blue
+            `rgba(255, 99, 132, ${alpha})`,   // Red
+            `rgba(75, 192, 192, ${alpha})`,   // Green
+            `rgba(255, 159, 64, ${alpha})`,   // Orange
+            `rgba(153, 102, 255, ${alpha})`,  // Purple
+            `rgba(255, 205, 86, ${alpha})`,   // Yellow
+            `rgba(201, 203, 207, ${alpha})`,  // Grey
+            `rgba(255, 99, 71, ${alpha})`,    // Tomato
+            `rgba(50, 205, 50, ${alpha})`,    // Lime Green
+            `rgba(0, 191, 255, ${alpha})`     // Deep Sky Blue
+        ];
+        
+        // Map well-known strategies to specific colors
+        const strategyColorMap = {
+            'all_cooperate': 0,
+            'all_defect': 1,
+            'tit_for_tat': 2,
+            'random': 3,
+            'grudger': 4,
+            'pavlov': 5,
+            'tit_for_2_tat': 6,
+            '2_tit_for_tat': 7
+        };
+        
+        if (strategy in strategyColorMap) {
+            return colors[strategyColorMap[strategy]];
+        }
+        
+        // If not a known strategy, use the index to pick a color
+        return colors[index % colors.length];
+    }
+    
+    // Main rendering function to create all charts
+    function renderCharts() {
+        const results = simulationData.results;
+        
+        // Extract strategy names from the config
+        const strategies = [];
+        if (simulationData.config && simulationData.config.strategies) {
+            for (const strategy in simulationData.config.strategies) {
+                strategies.push(strategy);
+            }
+        }
+        
+        // --- Data Processing ---
+        
+        // Process round data
+        let roundsData = [];
+        let strategyScores = {};
+        let totalMoves = {
+            'C': 0,  // Cooperate
+            'D': 0   // Defect
+        };
+        let interactionTypes = {
+            'CC': 0, // Both cooperate
+            'CD': 0, // Player 1 cooperates, Player 2 defects
+            'DC': 0, // Player 1 defects, Player 2 cooperates
+            'DD': 0  // Both defect
+        };
+        
+        let strategyMoves = {};
+        strategies.forEach(strategy => {
+            strategyMoves[strategy] = {'C': 0, 'D': 0};
+            strategyScores[strategy] = [];
+        });
+        
+        if (results && results.rounds) {
+            // Cumulative scores per agent
+            let agentScores = {};
+            
+            results.rounds.forEach((round, roundIndex) => {
+                const roundNum = roundIndex + 1;
+                let roundSummary = {
+                    round: roundNum,
+                    cooperations: 0,
+                    defections: 0,
+                    CC: 0,
+                    CD: 0,
+                    DC: 0,
+                    DD: 0
+                };
+                
+                if (round.interactions) {
+                    round.interactions.forEach(interaction => {
+                        // Initialize agent scores if needed
+                        if (!agentScores[interaction.agent1]) {
+                            agentScores[interaction.agent1] = Array(roundIndex).fill(0);
+                        }
+                        if (!agentScores[interaction.agent2]) {
+                            agentScores[interaction.agent2] = Array(roundIndex).fill(0);
+                        }
+                        
+                        // Ensure arrays are at the right length
+                        while (agentScores[interaction.agent1].length < roundIndex) {
+                            agentScores[interaction.agent1].push(agentScores[interaction.agent1][agentScores[interaction.agent1].length-1]);
+                        }
+                        while (agentScores[interaction.agent2].length < roundIndex) {
+                            agentScores[interaction.agent2].push(agentScores[interaction.agent2][agentScores[interaction.agent2].length-1]);
+                        }
+                        
+                        // Update agent scores for this round
+                        if (roundIndex > 0) {
+                            agentScores[interaction.agent1].push(agentScores[interaction.agent1][roundIndex-1] + interaction.score1);
+                            agentScores[interaction.agent2].push(agentScores[interaction.agent2][roundIndex-1] + interaction.score2);
+                        } else {
+                            agentScores[interaction.agent1].push(interaction.score1);
+                            agentScores[interaction.agent2].push(interaction.score2);
+                        }
+                        
+                        // Track moves
+                        if (interaction.move1 === 'C') roundSummary.cooperations++;
+                        if (interaction.move1 === 'D') roundSummary.defections++;
+                        if (interaction.move2 === 'C') roundSummary.cooperations++;
+                        if (interaction.move2 === 'D') roundSummary.defections++;
+                        
+                        // Track interaction types
+                        const interactionType = interaction.move1 + interaction.move2;
+                        if (interactionType === 'CC') roundSummary.CC++;
+                        if (interactionType === 'CD') roundSummary.CD++;
+                        if (interactionType === 'DC') roundSummary.DC++;
+                        if (interactionType === 'DD') roundSummary.DD++;
+                        
+                        interactionTypes[interactionType]++;
+                        
+                        // Track strategy moves
+                        // Extract strategy type from agent name (e.g., "all_cooperate_1" -> "all_cooperate")
+                        const agent1Strategy = interaction.agent1.substring(0, interaction.agent1.lastIndexOf('_'));
+                        const agent2Strategy = interaction.agent2.substring(0, interaction.agent2.lastIndexOf('_'));
+                        
+                        if (strategyMoves[agent1Strategy]) {
+                            strategyMoves[agent1Strategy][interaction.move1]++;
+                        }
+                        
+                        if (strategyMoves[agent2Strategy]) {
+                            strategyMoves[agent2Strategy][interaction.move2]++;
+                        }
+                        
+                        totalMoves[interaction.move1]++;
+                        totalMoves[interaction.move2]++;
+                    });
+                }
+                
+                roundsData.push(roundSummary);
+            });
+            
+            // Group scores by strategy
+            Object.keys(agentScores).forEach(agent => {
+                const strategy = agent.substring(0, agent.lastIndexOf('_'));
+                if (!strategyScores[strategy]) {
+                    strategyScores[strategy] = [];
+                }
+                strategyScores[strategy].push(agentScores[agent]);
+            });
+        }
+        
+        // Calculate average score per strategy per round
+        let averageStrategyScores = {};
+        Object.keys(strategyScores).forEach(strategy => {
+            if (strategyScores[strategy].length > 0) {
+                // Calculate average at each round
+                const numRounds = strategyScores[strategy][0].length;
+                averageStrategyScores[strategy] = Array(numRounds).fill(0);
+                
+                for (let round = 0; round < numRounds; round++) {
+                    let sum = 0;
+                    strategyScores[strategy].forEach(agentScore => {
+                        sum += agentScore[round];
+                    });
+                    averageStrategyScores[strategy][round] = sum / strategyScores[strategy].length;
+                }
+            }
+        });
+        
+        // Calculate strategy cooperation percentages
+        let strategyCooperation = {};
+        strategies.forEach(strategy => {
+            const total = strategyMoves[strategy]['C'] + strategyMoves[strategy]['D'];
+            strategyCooperation[strategy] = total > 0 ? 
+                (strategyMoves[strategy]['C'] / total) * 100 : 0;
+        });
+        
+        // Calculate average points per round
+        let pointsPerRound = {};
+        strategies.forEach(strategy => {
+            if (averageStrategyScores[strategy] && averageStrategyScores[strategy].length > 0) {
+                const lastRoundScore = averageStrategyScores[strategy][averageStrategyScores[strategy].length - 1];
+                pointsPerRound[strategy] = lastRoundScore / results.rounds.length;
+            } else {
+                pointsPerRound[strategy] = 0;
+            }
+        });
+        
+        // --- CHART RENDERING ---
+        
+        // 1. Score Chart - Shows cumulative score for each strategy over rounds
+        const scoreCanvas = document.getElementById('score-chart');
+        if (scoreCanvas && Object.keys(averageStrategyScores).length > 0) {
+            const ctx = scoreCanvas.getContext('2d');
+            
+            const scoreDatasets = Object.keys(averageStrategyScores).map((strategy, index) => {
+                return {
+                    label: humanizeStrategyName(strategy),
+                    data: averageStrategyScores[strategy],
+                    borderColor: getStrategyColor(strategy, index),
+                    backgroundColor: getStrategyColor(strategy, index, 0.1),
+                    borderWidth: 2,
+                    tension: 0.1,
+                    fill: false
+                };
+            });
+            
+            const rounds = Array.from({length: results.rounds.length}, (_, i) => `Round ${i+1}`);
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: rounds,
+                    datasets: scoreDatasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Cumulative Score'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 2. Strategy Performance Chart - Bar chart of final scores by strategy
+        const strategyCanvas = document.getElementById('strategy-performance-chart');
+        if (strategyCanvas && Object.keys(averageStrategyScores).length > 0) {
+            const ctx = strategyCanvas.getContext('2d');
+            
+            const strategyLabels = Object.keys(averageStrategyScores).map(humanizeStrategyName);
+            
+            const finalScores = Object.keys(averageStrategyScores).map(strategy => {
+                const scores = averageStrategyScores[strategy];
+                return scores[scores.length - 1];
+            });
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: strategyLabels,
+                    datasets: [{
+                        label: 'Final Score',
+                        data: finalScores,
+                        backgroundColor: Object.keys(averageStrategyScores).map(
+                            (strategy, index) => getStrategyColor(strategy, index, 0.7)
+                        ),
+                        borderColor: Object.keys(averageStrategyScores).map(
+                            (strategy, index) => getStrategyColor(strategy, index)
+                        ),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Score After All Rounds'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 3. Cooperation vs Defection Chart - Pie chart overall
+        const cooperationCanvas = document.getElementById('cooperation-chart');
+        if (cooperationCanvas && totalMoves) {
+            const ctx = cooperationCanvas.getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Cooperation', 'Defection'],
+                    datasets: [{
+                        data: [totalMoves['C'], totalMoves['D']],
+                        backgroundColor: ['rgba(75, 192, 192, 0.7)', 'rgba(255, 99, 132, 0.7)'],
+                        borderColor: ['rgba(75, 192, 192, 1)', 'rgba(255, 99, 132, 1)'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = totalMoves['C'] + totalMoves['D'];
+                                    const value = context.raw;
+                                    const percentage = Math.round((value / total) * 100);
+                                    return `${context.label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 4. Interaction Outcomes Chart
+        const interactionCanvas = document.getElementById('interaction-chart');
+        if (interactionCanvas && interactionTypes) {
+            const ctx = interactionCanvas.getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: [
+                        'Both Cooperate (CC)', 
+                        'First Cooperates, Second Defects (CD)',
+                        'First Defects, Second Cooperates (DC)',
+                        'Both Defect (DD)'
+                    ],
+                    datasets: [{
+                        data: [
+                            interactionTypes['CC'], 
+                            interactionTypes['CD'],
+                            interactionTypes['DC'],
+                            interactionTypes['DD']
+                        ],
+                        backgroundColor: [
+                            'rgba(75, 192, 192, 0.7)',  // Green for CC
+                            'rgba(255, 159, 64, 0.7)',  // Orange for CD
+                            'rgba(54, 162, 235, 0.7)',  // Blue for DC
+                            'rgba(255, 99, 132, 0.7)'   // Red for DD
+                        ],
+                        borderColor: [
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(255, 159, 64, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 99, 132, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = interactionTypes['CC'] + interactionTypes['CD'] + 
+                                                interactionTypes['DC'] + interactionTypes['DD'];
+                                    const value = context.raw;
+                                    const percentage = Math.round((value / total) * 100);
+                                    return `${context.label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 5. Strategy Cooperation Rate Chart
+        const strategyCoopCanvas = document.getElementById('strategy-cooperation-chart');
+        if (strategyCoopCanvas && Object.keys(strategyCooperation).length > 0) {
+            const ctx = strategyCoopCanvas.getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(strategyCooperation).map(humanizeStrategyName),
+                    datasets: [{
+                        label: 'Cooperation Rate (%)',
+                        data: Object.values(strategyCooperation),
+                        backgroundColor: Object.keys(strategyCooperation).map(
+                            (strategy, index) => getStrategyColor(strategy, index, 0.7)
+                        ),
+                        borderColor: Object.keys(strategyCooperation).map(
+                            (strategy, index) => getStrategyColor(strategy, index)
+                        ),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Cooperation Rate (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 6. Points Per Round Chart
+        const pointsCanvas = document.getElementById('points-per-round-chart');
+        if (pointsCanvas && Object.keys(pointsPerRound).length > 0) {
+            const ctx = pointsCanvas.getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(pointsPerRound).map(humanizeStrategyName),
+                    datasets: [{
+                        label: 'Average Points Per Round',
+                        data: Object.values(pointsPerRound),
+                        backgroundColor: Object.keys(pointsPerRound).map(
+                            (strategy, index) => getStrategyColor(strategy, index, 0.7)
+                        ),
+                        borderColor: Object.keys(pointsPerRound).map(
+                            (strategy, index) => getStrategyColor(strategy, index)
+                        ),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Points Per Round'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 7. Interaction Types Over Time
+        const interactionTimeCanvas = document.getElementById('interaction-time-chart');
+        if (interactionTimeCanvas && roundsData.length > 0) {
+            const ctx = interactionTimeCanvas.getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: roundsData.map(round => `Round ${round.round}`),
+                    datasets: [
+                        {
+                            label: 'CC (Both Cooperate)',
+                            data: roundsData.map(round => round.CC),
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: true
+                        },
+                        {
+                            label: 'CD (First Cooperates, Second Defects)',
+                            data: roundsData.map(round => round.CD),
+                            borderColor: 'rgba(255, 159, 64, 1)',
+                            backgroundColor: 'rgba(255, 159, 64, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: true
+                        },
+                        {
+                            label: 'DC (First Defects, Second Cooperates)',
+                            data: roundsData.map(round => round.DC),
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: true
+                        },
+                        {
+                            label: 'DD (Both Defect)',
+                            data: roundsData.map(round => round.DD),
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            stacked: false,
+                            title: {
+                                display: true,
+                                text: 'Number of Interactions'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 8. Pairwise Strategy Interactions Heatmap
+        // This is more complex and would need a specialized library for heatmaps
+        // For now, we'll skip this one
+        
+        // --- POPULATE TABLES ---
+        
+        // Strategy Summary Table
+        const summaryBody = document.getElementById('strategy-summary-body');
+        if (summaryBody) {
+            summaryBody.innerHTML = '';
+            
+            strategies.forEach(strategy => {
+                const totalC = strategyMoves[strategy]['C'];
+                const totalD = strategyMoves[strategy]['D'];
+                const total = totalC + totalD;
+                const coopRate = total > 0 ? Math.round((totalC / total) * 100) : 0;
+                const defectRate = total > 0 ? Math.round((totalD / total) * 100) : 0;
+                const avgPoints = pointsPerRound[strategy] ? pointsPerRound[strategy].toFixed(2) : '0.00';
+                const finalScore = averageStrategyScores[strategy] ? 
+                    Math.round(averageStrategyScores[strategy][averageStrategyScores[strategy].length - 1]) : 0;
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${humanizeStrategyName(strategy)}</td>
+                    <td>${coopRate}%</td>
+                    <td>${defectRate}%</td>
+                    <td>${avgPoints}</td>
+                    <td>${finalScore}</td>
+                `;
+                summaryBody.appendChild(row);
+            });
+        }
+        
+        // Rounds Table
+        const roundsBody = document.getElementById('rounds-body');
+        if (roundsBody && roundsData.length > 0) {
+            roundsBody.innerHTML = '';
+            
+            roundsData.forEach(round => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${round.round}</td>
+                    <td>${round.cooperations}</td>
+                    <td>${round.defections}</td>
+                    <td>${round.CC}</td>
+                    <td>${round.CD}</td>
+                    <td>${round.DC}</td>
+                    <td>${round.DD}</td>
+                `;
+                roundsBody.appendChild(row);
+            });
+        }
+    }
+    
+    // Initialize when the document is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
+        // Render all charts
+        renderCharts();
+    });
+</script>
+{% endblock %}

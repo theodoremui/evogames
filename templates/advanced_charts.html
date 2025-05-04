@@ -1,0 +1,714 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ page_title|default('Comprehensive Simulation Results') }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Comprehensive Simulation Results</h1>
+                <a href="{{ url_for('social_dilemmas') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Simulation
+                </a>
+            </div>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                This page shows all charts and analysis for your most recent simulation. Run a simulation first to see results here.
+            </div>
+        </div>
+    </div>
+
+    <!-- Simulation Info Card -->
+    <div id="simulation-info" class="row mt-3 mb-4" style="display: none;">
+        <div class="col-12">
+            <div class="card bg-dark text-light border-0 shadow">
+                <div class="card-header bg-primary bg-gradient">
+                    <h3 class="mb-0">Simulation Overview</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="card-title">Configuration</h5>
+                            <table class="table table-sm table-dark">
+                                <tbody>
+                                    <tr>
+                                        <th scope="row">Name</th>
+                                        <td id="config-name">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Dilemma Type</th>
+                                        <td id="config-dilemma-type">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Rounds</th>
+                                        <td id="config-rounds">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Strategies</th>
+                                        <td id="config-strategies">-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="card-title">Outcome Summary</h5>
+                            <table class="table table-sm table-dark">
+                                <tbody>
+                                    <tr>
+                                        <th scope="row">Top Strategy</th>
+                                        <td id="top-strategy">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Most Sustainable</th>
+                                        <td id="most-sustainable">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Resource Status</th>
+                                        <td id="resource-status">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Fairness Index</th>
+                                        <td id="fairness-index">-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- No simulation data message -->
+    <div id="no-data-message" class="row mt-4" style="display: none;">
+        <div class="col-12 text-center p-5 bg-dark rounded">
+            <h3 class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i>No Simulation Data Available</h3>
+            <p class="text-light mt-3">Please run a simulation first, then visit this page to see all charts and detailed results.</p>
+            <a href="{{ url_for('social_dilemmas') }}" class="btn btn-primary mt-3">
+                Go Run a Simulation
+            </a>
+        </div>
+    </div>
+    
+    <!-- Charts container -->
+    <div id="charts-container" class="row mt-4">
+        <!-- Navigation Tabs -->
+        <div class="col-12 mb-4">
+            <nav>
+                <div class="nav nav-tabs" id="results-nav-tab" role="tablist">
+                    <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic-charts" type="button" role="tab" aria-controls="basic-charts" aria-selected="true">Basic Charts</button>
+                    <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced-charts" type="button" role="tab" aria-controls="advanced-charts" aria-selected="false">Advanced Analysis</button>
+                    <button class="nav-link" id="distribution-tab" data-bs-toggle="tab" data-bs-target="#distribution-charts" type="button" role="tab" aria-controls="distribution-charts" aria-selected="false">Distribution</button>
+                    <button class="nav-link" id="detailed-tab" data-bs-toggle="tab" data-bs-target="#detailed-results" type="button" role="tab" aria-controls="detailed-results" aria-selected="false">Detailed Results</button>
+                    <button class="nav-link" id="insights-tab" data-bs-toggle="tab" data-bs-target="#simulation-insights" type="button" role="tab" aria-controls="simulation-insights" aria-selected="false">Insights</button>
+                </div>
+            </nav>
+            
+            <div class="tab-content p-3 bg-dark" id="results-nav-tabContent">
+                <!-- Basic Charts Tab -->
+                <div class="tab-pane fade show active" id="basic-charts" role="tabpanel" aria-labelledby="basic-tab">
+                    <div class="row">
+                        <!-- Resource Size Chart -->
+                        <div class="col-md-6 mb-5">
+                            <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                <div class="chart-title mb-3">
+                                    <i class="fas fa-info-circle text-info me-1"></i> 
+                                    <span>Resource Size Over Time</span>
+                                </div>
+                                <div style="height:350px; width:100%; position:relative;">
+                                    <canvas id="resource-chart" width="800" height="350"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Strategy Performance -->
+                        <div class="col-md-6 mb-5">
+                            <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                <div class="chart-title mb-3">
+                                    <i class="fas fa-info-circle text-info me-1"></i> 
+                                    <span>Strategy Performance</span>
+                                </div>
+                                <div style="height:350px; width:100%; position:relative;">
+                                    <canvas id="performance-chart" width="800" height="350"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Dilemma-specific charts, full width -->
+                        <!-- Tragedy of Commons Specific -->
+                        <div class="col-12 mb-5 dilemma-specific-chart tc-specific">
+                            <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                <div class="chart-title mb-3">
+                                    <i class="fas fa-info-circle text-info me-1"></i> 
+                                    <span>Strategy Harvest Over Time</span>
+                                </div>
+                                <div style="height:400px; width:100%; position:relative;">
+                                    <canvas id="harvest-chart" width="800" height="400"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Free Rider Specific -->
+                        <div class="col-12 mb-5 dilemma-specific-chart fr-specific" style="display: none;">
+                            <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                <div class="chart-title mb-3">
+                                    <i class="fas fa-info-circle text-info me-1"></i> 
+                                    <span>Strategy Contribution Over Time</span>
+                                </div>
+                                <div style="height:400px; width:100%; position:relative;">
+                                    <canvas id="contribution-chart" width="800" height="400"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Public Goods Specific -->
+                        <div class="col-12 mb-5 dilemma-specific-chart pg-specific" style="display: none;">
+                            <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                <div class="chart-title mb-3">
+                                    <i class="fas fa-info-circle text-info me-1"></i> 
+                                    <span>Common Pool Growth</span>
+                                </div>
+                                <div style="height:400px; width:100%; position:relative;">
+                                    <canvas id="pool-chart" width="800" height="400"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Advanced Analysis Tab -->
+                <div class="tab-pane fade" id="advanced-charts" role="tabpanel" aria-labelledby="advanced-tab">
+                    <div class="row">
+                        <!-- Sustainability Impact Chart -->
+                        <div class="col-md-6 mb-5">
+                            <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                <div class="chart-title mb-3">
+                                    <i class="fas fa-info-circle text-info me-1"></i> 
+                                    <span>Sustainability Impact by Strategy</span>
+                                </div>
+                                <div style="height:400px; width:100%; position:relative; background-color: rgba(50,50,50,0.1); border-radius: 4px;">
+                                    <canvas id="sustainability-chart" width="800" height="400"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Social Welfare Chart -->
+                        <div class="col-md-6 mb-5">
+                            <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                <div class="chart-title mb-3">
+                                    <i class="fas fa-info-circle text-info me-1"></i> 
+                                    <span>Social Welfare Contribution by Strategy</span>
+                                </div>
+                                <div style="height:400px; width:100%; position:relative; background-color: rgba(50,50,50,0.1); border-radius: 4px;">
+                                    <canvas id="welfare-chart" width="800" height="400"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Distribution Charts Tab -->
+                <div class="tab-pane fade" id="distribution-charts" role="tabpanel" aria-labelledby="distribution-tab">
+                    <div class="row">
+                        <div class="col-md-6 mb-5">
+                            <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                <div class="chart-title mb-3">
+                                    <i class="fas fa-info-circle text-info me-1"></i> 
+                                    <span>Final Resource Distribution</span>
+                                </div>
+                                <div style="height:400px; width:100%; position:relative;">
+                                    <canvas id="distribution-chart" width="800" height="400"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-5">
+                            <div class="chart-container" style="background-color: #222; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                <div class="chart-title mb-3">
+                                    <i class="fas fa-info-circle text-info me-1"></i> 
+                                    <span>Action Distribution by Strategy</span>
+                                </div>
+                                <div style="height:400px; width:100%; position:relative;">
+                                    <canvas id="actions-chart" width="800" height="400"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Detailed Results Tab -->
+                <div class="tab-pane fade" id="detailed-results" role="tabpanel" aria-labelledby="detailed-tab">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card bg-dark">
+                                <div class="card-header">
+                                    <h5 class="mb-0 text-light">Detailed Simulation Results</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-dark table-hover" id="results-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Strategy</th>
+                                                    <th>Total Score</th>
+                                                    <th>Resources</th>
+                                                    <th>Sustainability</th>
+                                                    <th>Social Welfare</th>
+                                                    <th>Avg. Score per Round</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="results-tbody">
+                                                <!-- Results will be populated dynamically -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12 mt-4">
+                            <div class="card bg-dark">
+                                <div class="card-header">
+                                    <h5 class="mb-0 text-light">Raw JSON Data</h5>
+                                </div>
+                                <div class="card-body">
+                                    <pre id="raw-json" class="bg-dark text-light p-3" style="max-height: 400px; overflow-y: auto; border-radius: 4px; border: 1px solid #444;"></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Simulation Insights Tab -->
+                <div class="tab-pane fade" id="simulation-insights" role="tabpanel" aria-labelledby="insights-tab">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card bg-dark">
+                                <div class="card-header">
+                                    <h5 class="mb-0 text-light">Key Insights</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="insights-container">
+                                        <!-- Insights will be populated dynamically -->
+                                        <div class="placeholder-glow">
+                                            <p class="placeholder col-12"></p>
+                                            <p class="placeholder col-10"></p>
+                                            <p class="placeholder col-8"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mt-4">
+                            <div class="card bg-dark">
+                                <div class="card-header">
+                                    <h5 class="mb-0 text-light">Strategy Analysis</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="strategy-insights">
+                                        <!-- Strategy insights will be populated dynamically -->
+                                        <div class="placeholder-glow">
+                                            <p class="placeholder col-12"></p>
+                                            <p class="placeholder col-9"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mt-4">
+                            <div class="card bg-dark">
+                                <div class="card-header">
+                                    <h5 class="mb-0 text-light">Dynamics Analysis</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="dynamics-insights">
+                                        <!-- Dynamics insights will be populated dynamically -->
+                                        <div class="placeholder-glow">
+                                            <p class="placeholder col-12"></p>
+                                            <p class="placeholder col-9"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block additional_scripts %}
+<!-- Include Chart.js first if not loaded already in layout -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script src="{{ url_for('static', filename='js/chart-config.js') }}"></script>
+<script>
+// Charts for the advanced analysis view
+let advancedCharts = {
+    tcRegenChart: null,
+    strategyPerformanceChart: null,
+    sustainabilityChart: null,
+    welfareChart: null
+};
+
+// Helper function to convert strategy name to human-readable form
+function humanizeStrategyName(strategy) {
+    return strategy
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
+
+// Helper function to get color for a strategy
+function getStrategyColor(strategy, index, alpha = 1) {
+    const colors = {
+        'sustainable': `rgba(46, 204, 113, ${alpha})`, // Green
+        'greedy': `rgba(231, 76, 60, ${alpha})`,      // Red
+        'adaptive': `rgba(52, 152, 219, ${alpha})`,   // Blue
+        'fair_share': `rgba(241, 196, 15, ${alpha})`, // Yellow
+        'random': `rgba(155, 89, 182, ${alpha})`,     // Purple
+        'tit_for_tat': `rgba(230, 126, 34, ${alpha})`, // Orange
+        'conservative': `rgba(149, 165, 166, ${alpha})` // Gray
+    };
+    
+    // If we have a predefined color for this strategy, use it
+    if (colors[strategy]) {
+        return colors[strategy];
+    }
+    
+    // Otherwise generate a color based on index
+    const defaultColors = [
+        `rgba(46, 204, 113, ${alpha})`,   // Green
+        `rgba(231, 76, 60, ${alpha})`,    // Red
+        `rgba(52, 152, 219, ${alpha})`,   // Blue
+        `rgba(241, 196, 15, ${alpha})`,   // Yellow
+        `rgba(155, 89, 182, ${alpha})`,   // Purple
+        `rgba(230, 126, 34, ${alpha})`,   // Orange
+        `rgba(149, 165, 166, ${alpha})`   // Gray
+    ];
+    
+    return defaultColors[index % defaultColors.length];
+}
+
+function renderAdvancedCharts(data) {
+    console.log("Rendering advanced analysis charts on dedicated page:", data);
+    
+    if (!data || !data.results || !data.results.final_stats) {
+        console.error("Invalid data format for advanced charts");
+        document.getElementById('no-data-message').style.display = 'block';
+        document.getElementById('charts-container').style.display = 'none';
+        return;
+    }
+    
+    // Hide the no data message, show charts
+    document.getElementById('no-data-message').style.display = 'none';
+    document.getElementById('charts-container').style.display = 'block';
+    
+    try {
+        const roundData = data.results.rounds || {};
+        const finalStats = data.results.final_stats || {};
+        const strategies = Object.keys(finalStats.strategies || {});
+        const dilemmaType = data.config.dilemma_type;
+        
+        // Show/hide dilemma-specific charts
+        document.querySelectorAll('.dilemma-specific-chart').forEach(chart => {
+            chart.style.display = 'none';
+        });
+        
+        if (dilemmaType === 'tragedy_commons') {
+            document.querySelector('.tc-specific').style.display = 'block';
+            
+            // Render resource regeneration chart
+            const canvas = document.getElementById('tc-regen-chart');
+            const ctx = canvas.getContext('2d');
+            
+            // Clear existing chart
+            if (advancedCharts.tcRegenChart) {
+                advancedCharts.tcRegenChart.destroy();
+            }
+            
+            advancedCharts.tcRegenChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.results.rounds.map((_, i) => `Round ${i+1}`),
+                    datasets: [
+                        {
+                            label: 'Resource Level',
+                            data: data.results.resource_levels,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            fill: true,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Total Harvest',
+                            data: data.results.harvest_levels || data.results.rounds.map(() => 0),
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            fill: true,
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Units'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Render strategy performance chart
+        const canvas2 = document.getElementById('strategy-performance-chart');
+        const ctx2 = canvas2.getContext('2d');
+        
+        if (advancedCharts.strategyPerformanceChart) {
+            advancedCharts.strategyPerformanceChart.destroy();
+        }
+        
+        // Prepare strategy scores by round
+        const strategyDatasets = strategies.map((strategy, index) => {
+            const scores = data.results.rounds.map(round => {
+                if (round.strategy_scores && round.strategy_scores[strategy]) {
+                    return round.strategy_scores[strategy];
+                }
+                return 0;
+            });
+            
+            return {
+                label: humanizeStrategyName(strategy),
+                data: scores,
+                borderColor: getStrategyColor(strategy, index),
+                backgroundColor: getStrategyColor(strategy, index, 0.1),
+                tension: 0.1
+            };
+        });
+        
+        advancedCharts.strategyPerformanceChart = new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: data.results.rounds.map((_, i) => `Round ${i+1}`),
+                datasets: strategyDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Score'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Render sustainability impact chart
+        const canvas3 = document.getElementById('sustainability-chart');
+        const ctx3 = canvas3.getContext('2d');
+        
+        if (advancedCharts.sustainabilityChart) {
+            advancedCharts.sustainabilityChart.destroy();
+        }
+        
+        const sustainabilityData = {
+            labels: strategies.map(humanizeStrategyName),
+            datasets: [{
+                label: 'Sustainability Impact',
+                data: strategies.map(strategy => {
+                    const stratData = finalStats.strategies[strategy] || {};
+                    const impact = stratData.sustainability_impact || 0;
+                    return impact * 100; // Scale for better visualization
+                }),
+                backgroundColor: strategies.map((strategy, index) => getStrategyColor(strategy, index, 0.7)),
+                borderColor: strategies.map((strategy, index) => getStrategyColor(strategy, index)),
+                borderWidth: 1
+            }]
+        };
+        
+        advancedCharts.sustainabilityChart = new Chart(ctx3, {
+            type: 'bar',
+            data: sustainabilityData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Impact Score'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Render social welfare chart
+        const canvas4 = document.getElementById('welfare-chart');
+        const ctx4 = canvas4.getContext('2d');
+        
+        if (advancedCharts.welfareChart) {
+            advancedCharts.welfareChart.destroy();
+        }
+        
+        const welfareData = {
+            labels: strategies.map(humanizeStrategyName),
+            datasets: [{
+                label: 'Social Welfare',
+                data: strategies.map(strategy => {
+                    const stratData = finalStats.strategies[strategy] || {};
+                    const welfare = stratData.social_welfare || 0;
+                    return welfare * 100; // Scale for better visualization
+                }),
+                backgroundColor: strategies.map((strategy, index) => getStrategyColor(strategy, index, 0.7)),
+                borderColor: strategies.map((strategy, index) => getStrategyColor(strategy, index)),
+                borderWidth: 1
+            }]
+        };
+        
+        advancedCharts.welfareChart = new Chart(ctx4, {
+            type: 'bar',
+            data: welfareData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Welfare Score'
+                        }
+                    }
+                }
+            }
+        });
+        
+        console.log("Advanced charts rendered successfully on dedicated page");
+    } catch (error) {
+        console.error("Error rendering advanced charts:", error);
+    }
+}
+
+// Check for session data from multiple sources
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("Checking for simulation data from all sources");
+    
+    // First check if this is a redirect from the main page via URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const isRedirect = urlParams.get('redirect') === '1';
+    
+    if (isRedirect) {
+        console.log("This is a redirect from main page - fetch data from API");
+        // This is a redirect, prioritize getting fresh data from the API
+        fetch('/api/get-session-data')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.advanced_charts_data) {
+                console.log("Successfully retrieved latest simulation data from API on redirect");
+                renderAdvancedCharts(data.advanced_charts_data);
+                // Also store in sessionStorage for page refreshes
+                sessionStorage.setItem('advancedChartsData', JSON.stringify(data.advanced_charts_data));
+                return;
+            } else {
+                // If no data in API, fall through to normal flow
+                console.log("No data from API despite redirect, checking other sources");
+                checkOtherSources();
+            }
+        })
+        .catch(error => {
+            console.error("Error fetching from API despite redirect:", error);
+            checkOtherSources();
+        });
+    } else {
+        // Not a redirect, check other sources in order
+        checkOtherSources();
+    }
+    
+    function checkOtherSources() {
+        // Check Flask session data first
+        {% if simulation_results %}
+            const simulationData = {{ simulation_results|tojson }};
+            console.log("Found simulation data in Flask session:", simulationData);
+            renderAdvancedCharts(simulationData);
+            
+            // Store for future use
+            try {
+                sessionStorage.setItem('advancedChartsData', JSON.stringify(simulationData));
+            } catch (e) {
+                console.error("Error saving Flask data to sessionStorage:", e);
+            }
+        {% else %}
+            // Then check browser sessionStorage
+            console.log("No simulation data in Flask session, checking sessionStorage");
+            try {
+                const storedData = sessionStorage.getItem('advancedChartsData');
+                if (storedData) {
+                    const simulationData = JSON.parse(storedData);
+                    console.log("Found simulation data in sessionStorage:", simulationData);
+                    renderAdvancedCharts(simulationData);
+                    
+                    // Sync back to server session
+                    fetch('/api/save-session-data', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            advanced_charts_data: simulationData
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('SessionStorage data saved to server:', data);
+                    })
+                    .catch(error => {
+                        console.error('Error saving sessionStorage data to server:', error);
+                    });
+                } else {
+                    // Last resort, try to get data from the API
+                    console.log("No data in sessionStorage, trying API as last resort");
+                    fetch('/api/get-session-data')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.advanced_charts_data) {
+                            console.log("Retrieved simulation data from API as last resort:", data.advanced_charts_data);
+                            renderAdvancedCharts(data.advanced_charts_data);
+                            sessionStorage.setItem('advancedChartsData', JSON.stringify(data.advanced_charts_data));
+                        } else {
+                            console.warn("No simulation data found in ANY source");
+                            document.getElementById('no-data-message').style.display = 'block';
+                            document.getElementById('charts-container').style.display = 'none';
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error fetching from API as last resort:", error);
+                        document.getElementById('no-data-message').style.display = 'block';
+                        document.getElementById('charts-container').style.display = 'none';
+                    });
+                }
+            } catch (e) {
+                console.error("Error accessing sessionStorage:", e);
+                document.getElementById('no-data-message').style.display = 'block';
+                document.getElementById('charts-container').style.display = 'none';
+            }
+        {% endif %}
+    }
+});
+</script>
+{% endblock %}

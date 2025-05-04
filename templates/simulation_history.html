@@ -1,0 +1,190 @@
+{% extends "layout.html" %}
+
+{% block title %}Simulation History{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1>Simulation History</h1>
+                <div>
+                    <a href="{{ url_for('social_dilemmas') }}" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Social Dilemmas
+                    </a>
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Game Theory Lab
+                    </a>
+                </div>
+            </div>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                View your past simulation runs and results here. Click on any simulation to view detailed results.
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <!-- Filters -->
+            <div class="card bg-dark text-light mb-4">
+                <div class="card-header bg-primary bg-gradient">
+                    <h4 class="mb-0">Filter Simulations</h4>
+                </div>
+                <div class="card-body">
+                    <form id="filter-form" action="{{ url_for('simulation_history') }}" method="get">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label for="filter-type" class="form-label">Dilemma Type</label>
+                                <select class="form-select" id="filter-type" name="type">
+                                    <option value="">All Types</option>
+                                    <!-- Social Dilemmas -->
+                                    <optgroup label="Social Dilemmas">
+                                        <option value="tragedy_commons" {% if request.args.get('type') == 'tragedy_commons' %}selected{% endif %}>Tragedy of the Commons</option>
+                                        <option value="free_rider" {% if request.args.get('type') == 'free_rider' %}selected{% endif %}>Free Rider Problem</option>
+                                        <option value="public_goods" {% if request.args.get('type') == 'public_goods' %}selected{% endif %}>Public Goods Game</option>
+                                    </optgroup>
+                                    <!-- Game Theory Lab -->
+                                    <optgroup label="Game Theory Lab">
+                                        <option value="prisoners_dilemma" {% if request.args.get('type') == 'prisoners_dilemma' %}selected{% endif %}>Prisoner's Dilemma</option>
+                                        <option value="ultimatum_game" {% if request.args.get('type') == 'ultimatum_game' %}selected{% endif %}>Ultimatum Game</option>
+                                        <option value="game_of_chicken" {% if request.args.get('type') == 'game_of_chicken' %}selected{% endif %}>Game of Chicken</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label for="filter-date" class="form-label">Sort By</label>
+                                <select class="form-select" id="filter-date" name="sort">
+                                    <option value="newest" {% if request.args.get('sort') == 'newest' or not request.args.get('sort') %}selected{% endif %}>Newest First</option>
+                                    <option value="oldest" {% if request.args.get('sort') == 'oldest' %}selected{% endif %}>Oldest First</option>
+                                    <option value="name" {% if request.args.get('sort') == 'name' %}selected{% endif %}>Name (A-Z)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label for="filter-search" class="form-label">Search</label>
+                                <input type="text" class="form-control" id="filter-search" name="search" placeholder="Search by name or description" value="{{ request.args.get('search', '') }}">
+                            </div>
+                            
+                            <div class="col-12 d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-filter me-2"></i>Apply Filters
+                                </button>
+                                <a href="{{ url_for('simulation_history') }}" class="btn btn-outline-secondary ms-2">
+                                    <i class="fas fa-undo me-2"></i>Reset
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Results List -->
+            {% if simulations %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col">Name</th>
+                                <th scope="col">Type</th>
+                                <th scope="col">Date</th>
+                                <th scope="col">Rounds</th>
+                                <th scope="col">Agents</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sim in simulations %}
+                                <tr class="simulation-row" data-id="{{ sim.id }}">
+                                    <td>
+                                        <strong>{{ sim.name }}</strong>
+                                        {% if sim.description %}
+                                            <div class="small text-muted">{{ sim.short_description }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if sim.game_type == 'tragedy_commons' %}
+                                            <span class="badge bg-danger">Tragedy of Commons</span>
+                                        {% elif sim.game_type == 'free_rider' %}
+                                            <span class="badge bg-warning text-dark">Free Rider</span>
+                                        {% elif sim.game_type == 'public_goods' %}
+                                            <span class="badge bg-info">Public Goods</span>
+                                        {% elif sim.game_type == 'prisoners_dilemma' %}
+                                            <span class="badge bg-primary">Prisoner's Dilemma</span>
+                                        {% elif sim.game_type == 'ultimatum_game' %}
+                                            <span class="badge bg-success">Ultimatum Game</span>
+                                        {% elif sim.game_type == 'game_of_chicken' %}
+                                            <span class="badge bg-dark">Game of Chicken</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ sim.game_type }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ sim.formatted_date }}</td>
+                                    <td>{{ sim.total_rounds or '-' }}</td>
+                                    <td>{{ sim.num_agents or '-' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('view_simulation', simulation_id=sim.id) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-chart-line me-1"></i> View Results
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if total_pages > 1 %}
+                    <nav aria-label="Simulation history pagination">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item {{ 'disabled' if page == 1 else '' }}">
+                                <a class="page-link" href="{{ url_for('simulation_history', page=page-1, **request.args) if page > 1 else '#' }}">Previous</a>
+                            </li>
+                            
+                            {% for p in range(1, total_pages + 1) %}
+                                <li class="page-item {{ 'active' if p == page else '' }}">
+                                    <a class="page-link" href="{{ url_for('simulation_history', page=p, **request.args) }}">{{ p }}</a>
+                                </li>
+                            {% endfor %}
+                            
+                            <li class="page-item {{ 'disabled' if page == total_pages else '' }}">
+                                <a class="page-link" href="{{ url_for('simulation_history', page=page+1, **request.args) if page < total_pages else '#' }}">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    No simulation history found. Run some simulations to see them appear here.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for row click -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const rows = document.querySelectorAll('.simulation-row');
+        rows.forEach(row => {
+            row.addEventListener('click', function(e) {
+                // Don't trigger if they clicked a button or link
+                if (e.target.tagName.toLowerCase() === 'a' || 
+                    e.target.tagName.toLowerCase() === 'button' ||
+                    e.target.closest('a') || 
+                    e.target.closest('button')) {
+                    return;
+                }
+                
+                const simId = this.dataset.id;
+                window.location.href = `/simulation/${simId}`;
+            });
+            
+            // Make the row look clickable
+            row.style.cursor = 'pointer';
+        });
+    });
+</script>
+{% endblock %}
