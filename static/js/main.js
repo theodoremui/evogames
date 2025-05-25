@@ -24,6 +24,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const saveConfigBtn = document.getElementById('save-config-btn');
     const runSimulationBtn = document.getElementById('run-simulation-btn');
     
+    // Debug: Check if elements are found
+    console.log("saveConfigBtn element:", saveConfigBtn);
+    console.log("runSimulationBtn element:", runSimulationBtn);
+    
     // Saved configurations
     const savedConfigsList = document.getElementById('saved-configs');
     
@@ -42,10 +46,16 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Save configuration button
     saveConfigBtn.addEventListener('click', function() {
-        if (!validateForm()) return;
+        console.log("Save button clicked!");
+        if (!validateForm()) {
+            console.log("Form validation failed");
+            return;
+        }
         
         const configData = collectFormData();
+        console.log("Config data collected:", configData);
         
+        console.log("about to call /api/config ...");
         // Send to backend
         fetch('/api/config', {
             method: 'POST',
@@ -54,10 +64,14 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             body: JSON.stringify(configData)
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log("Received response:", response.status, response.statusText);
+            return response.json();
+        })
         .then(data => {
+            console.log("Response data:", data);
             if (data.success) {
-                showNotification('Success', 'Configuration saved successfully!', 'success');
+                showNotification('Success', 'main: Configuration saved successfully!', 'success');
                 // Refresh saved configs list
                 fetchSavedConfigs();
             } else {
@@ -65,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
+            console.error('Fetch error:', error);
             showNotification('Error', 'Failed to save configuration', 'danger');
         });
     });

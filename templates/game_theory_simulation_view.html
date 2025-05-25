@@ -578,29 +578,26 @@
             });
         }
         
-        // 2. Strategy Performance Chart - Bar chart of final scores by strategy
+        // 2. Strategy Performance Chart - Bar chart of average scores per round by strategy
         const strategyCanvas = document.getElementById('strategy-performance-chart');
-        if (strategyCanvas && Object.keys(averageStrategyScores).length > 0) {
+        if (strategyCanvas && Object.keys(pointsPerRound).length > 0) {
             const ctx = strategyCanvas.getContext('2d');
             
-            const strategyLabels = Object.keys(averageStrategyScores).map(humanizeStrategyName);
+            const strategyLabels = Object.keys(pointsPerRound).map(humanizeStrategyName);
             
-            const finalScores = Object.keys(averageStrategyScores).map(strategy => {
-                const scores = averageStrategyScores[strategy];
-                return scores[scores.length - 1];
-            });
+            const averageScores = Object.values(pointsPerRound);
             
             new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: strategyLabels,
                     datasets: [{
-                        label: 'Final Score',
-                        data: finalScores,
-                        backgroundColor: Object.keys(averageStrategyScores).map(
+                        label: 'Average Score per Round',
+                        data: averageScores,
+                        backgroundColor: Object.keys(pointsPerRound).map(
                             (strategy, index) => getStrategyColor(strategy, index, 0.7)
                         ),
-                        borderColor: Object.keys(averageStrategyScores).map(
+                        borderColor: Object.keys(pointsPerRound).map(
                             (strategy, index) => getStrategyColor(strategy, index)
                         ),
                         borderWidth: 1
@@ -614,7 +611,7 @@
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Score After All Rounds'
+                                text: 'Average Score per Round'
                             }
                         }
                     }

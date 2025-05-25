@@ -255,7 +255,7 @@
                         <div class="col-md-6 mb-4">
                             <div class="chart-container">
                                 <div class="chart-title" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true" 
-                                     title="<strong>Average Score by Strategy</strong><br>This bar chart shows the average score achieved by each strategy type. Higher bars indicate more successful strategies overall. The average is calculated across all agents using the same strategy. This helps identify which strategies are most effective in the current mix of agents and number of rounds.">
+                                     title="<strong>Average Score by Strategy</strong><br>This bar chart shows the average score per round achieved by each strategy type. Higher bars indicate more successful strategies overall. The average is calculated by taking the final cumulative score and dividing by the number of rounds, then averaging across all agents using the same strategy. This helps identify which strategies are most effective per round in the current mix of agents.">
                                     <i class="fas fa-info-circle text-info me-1"></i> Average Score by Strategy
                                 </div>
                                 <canvas id="strategy-performance-chart"></canvas>

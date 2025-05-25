@@ -309,11 +309,18 @@ def create_config():
         db.session.add(config)
         db.session.commit()
         
+        print(f"DEBUG: About to call save_config for config ID {config.id}")
+        
         # Also save to file
         result = save_config(data, f"config_{config.id}.json")
+        
+        print(f"DEBUG: save_config returned: {result}")
+        
         if not result['success']:
+            print(f"DEBUG: save_config failed with error: {result['error']}")
             return jsonify({'success': False, 'error': result['error']}), 500
         
+        print(f"DEBUG: save_config succeeded, returning success response")
         return jsonify({'success': True, 'config_id': config.id}), 201
     except Exception as e:
         db.session.rollback()
@@ -427,7 +434,7 @@ def run_simulation():
             return jsonify({'success': False, 'error': validation['error']}), 400
     
     # Get number of rounds
-    rounds = data.get('rounds', config_data.get('rounds', 100))
+    rounds = data.get('rounds', config_data.get('rounds', 1))
     debug_logger.info(f"Running simulation for {rounds} rounds")
     
     # Check that the game type is valid
@@ -444,17 +451,17 @@ def run_simulation():
     
     # Make sure we have at least one agent
     total_agents = 0
-    for strategy, count in strategies.items():
+    for strategy, num_agents in strategies.items():
         try:
-            agent_count = int(count)
+            agent_count = int(num_agents)
             if agent_count < 0:
-                debug_logger.error(f"Invalid agent count for {strategy}: {count} (negative)")
-                return jsonify({'success': False, 'error': f'Invalid agent count for {strategy}: {count}. Must be ≥ 0.'}), 400
+                debug_logger.error(f"Invalid agent count for {strategy}: {num_agents} (negative)")
+                return jsonify({'success': False, 'error': f'Invalid agent count for {strategy}: {num_agents}. Must be ≥ 0.'}), 400
             total_agents += agent_count
             debug_logger.info(f"Strategy {strategy}: {agent_count} agents")
         except (ValueError, TypeError):
-            debug_logger.error(f"Invalid agent count for {strategy}: {count} (not a number)")
-            return jsonify({'success': False, 'error': f'Invalid agent count for {strategy}: {count}. Must be an integer.'}), 400
+            debug_logger.error(f"Invalid agent count for {strategy}: {num_agents} (not a number)")
+            return jsonify({'success': False, 'error': f'Invalid agent count for {strategy}: {num_agents}. Must be an integer.'}), 400
     
     if total_agents <= 0:
         debug_logger.error("No agents specified (total is zero)")

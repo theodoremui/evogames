@@ -23,17 +23,29 @@ def get_data_dir():
 
 def save_config(config_data, filename=None):
     """Save a configuration to a JSON file"""
+    print(f"DEBUG: save_config called with filename={filename}")
+    
     if not filename:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"config_{timestamp}.json"
     
-    filepath = os.path.join(get_data_dir(), filename)
+    data_dir = get_data_dir()
+    filepath = os.path.join(data_dir, filename)
+    
+    print(f"DEBUG: Attempting to save to {filepath}")
+    print(f"DEBUG: Data directory exists: {os.path.exists(data_dir)}")
+    print(f"DEBUG: Data directory writable: {os.access(data_dir, os.W_OK)}")
     
     try:
         with open(filepath, 'w') as f:
             json.dump(config_data, f, indent=2)
+        
+        print(f"DEBUG: File written successfully")
+        print(f"DEBUG: File exists after write: {os.path.exists(filepath)}")
+        
         return {'success': True, 'filename': filename}
     except Exception as e:
+        print(f"DEBUG: Error saving configuration: {str(e)}")
         logging.error(f"Error saving configuration: {str(e)}")
         return {'success': False, 'error': str(e)}
 

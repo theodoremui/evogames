@@ -670,7 +670,7 @@ function initializePage() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showNotification('Success', 'Configuration saved successfully!', 'success');
+                showNotification('Success', 'social-dilemmas: Configuration saved successfully!', 'success');
             } else {
                 showNotification('Error', data.error, 'danger');
             }

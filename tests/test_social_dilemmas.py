@@ -187,27 +187,56 @@ class TestSocialDilemmaFactory(unittest.TestCase):
     
     def test_create_tragedy_commons(self):
         """Test creation of Tragedy of Commons simulation."""
-        config = {'dilemma_type': 'tragedy_commons'}
+        config = {
+            'dilemma_type': 'tragedy_commons',
+            'strategies': {'sustainable': 2, 'greedy': 2}
+        }
         simulation = SocialDilemmaFactory.create_simulation(config)
         self.assertIsInstance(simulation, TragedyOfCommonsSimulation)
     
     def test_create_free_rider(self):
         """Test creation of Free Rider simulation."""
-        config = {'dilemma_type': 'free_rider'}
+        config = {
+            'dilemma_type': 'free_rider',
+            'strategies': {'contributor': 2, 'free_rider': 2}
+        }
         simulation = SocialDilemmaFactory.create_simulation(config)
         self.assertIsInstance(simulation, FreeRiderSimulation)
     
     def test_create_public_goods(self):
         """Test creation of Public Goods simulation."""
-        config = {'dilemma_type': 'public_goods'}
+        config = {
+            'dilemma_type': 'public_goods',
+            'strategies': {'full': 2, 'zero': 2}
+        }
         simulation = SocialDilemmaFactory.create_simulation(config)
         self.assertIsInstance(simulation, PublicGoodsSimulation)
     
     def test_invalid_type(self):
         """Test that invalid dilemma type raises ValueError."""
-        config = {'dilemma_type': 'invalid_type'}
+        config = {
+            'dilemma_type': 'invalid_type',
+            'strategies': {'test': 2}
+        }
         with self.assertRaises(ValueError):
             SocialDilemmaFactory.create_simulation(config)
+    
+    def test_missing_strategies(self):
+        """Test that missing strategies field raises ValueError."""
+        config = {'dilemma_type': 'tragedy_commons'}
+        with self.assertRaises(ValueError) as context:
+            SocialDilemmaFactory.create_simulation(config)
+        self.assertIn("No strategies field", str(context.exception))
+    
+    def test_empty_strategies(self):
+        """Test that empty strategies raises ValueError."""
+        config = {
+            'dilemma_type': 'tragedy_commons',
+            'strategies': {}
+        }
+        with self.assertRaises(ValueError) as context:
+            SocialDilemmaFactory.create_simulation(config)
+        self.assertIn("No strategies specified", str(context.exception))
 
 
 if __name__ == '__main__':

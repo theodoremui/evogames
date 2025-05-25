@@ -13,6 +13,7 @@ import random
 import numpy as np
 from itertools import combinations
 import logging
+from abc import ABC, abstractmethod
 
 # Default constants for prisoner's dilemma payoffs
 # These can be overridden by config values
@@ -118,21 +119,25 @@ STRATEGY_MAP = {
     'grudger': GrudgerStrategy
 }
 
-class PrisonersDilemmaSimulation:
-    """Simulation for Prisoner's Dilemma games"""
+class Simulation(ABC):
+    """Abstract base class for all game simulations"""
     
     def __init__(self, config):
         self.config = config
         self.agents = []
         self.round = 0
-        self.results = {
+        self.results = self._initialize_results()
+        self.initialize_agents()
+    
+    def _initialize_results(self):
+        """Initialize the basic results structure. Can be overridden by subclasses."""
+        return {
             'rounds': [],
             'scores': {},
             'strategy_performance': {},
             'overall_cooperation': 0,
             'overall_defection': 0
         }
-        self.initialize_agents()
     
     def initialize_agents(self):
         """Create agents based on configuration"""
@@ -154,11 +159,85 @@ class PrisonersDilemmaSimulation:
         
         # Initialize strategy performance tracking
         for strategy in STRATEGY_MAP.keys():
-            self.results['strategy_performance'][strategy] = {
-                'avg_score': 0,
-                'total_cooperation': 0,
-                'total_defection': 0
-            }
+            self.results['strategy_performance'][strategy] = self._initialize_strategy_performance()
+    
+    def _initialize_strategy_performance(self):
+        """Initialize strategy performance tracking. Can be overridden by subclasses."""
+        return {
+            'avg_score': 0,
+            'total_cooperation': 0,
+            'total_defection': 0
+        }
+    
+    def track_strategy_stats(self, strategy_type, move):
+        """Track strategy performance statistics"""
+        if move == 'C':
+            self.results['strategy_performance'][strategy_type]['total_cooperation'] += 1
+        else:
+            self.results['strategy_performance'][strategy_type]['total_defection'] += 1
+    
+    def run_simulation(self, rounds=None):
+        """Run the full simulation for specified number of rounds"""
+        if rounds is None:
+            rounds = self.config.get('rounds', 100)
+        
+        for _ in range(rounds):
+            self.run_round()
+        
+        # Calculate final statistics
+        self.calculate_final_stats()
+        
+        return self.results
+    
+    def calculate_final_stats(self):
+        """Calculate final statistics for the simulation"""
+        # Calculate average scores per strategy
+        strategy_scores = {}
+        for agent in self.agents:
+            strategy = agent['type']
+            if strategy not in strategy_scores:
+                strategy_scores[strategy] = []
+            strategy_scores[strategy].append(agent['strategy'].score)
+        
+        # Update strategy performance with average scores
+        for strategy, scores in strategy_scores.items():
+            if scores:  # Only calculate if there are scores
+                self.results['strategy_performance'][strategy]['avg_score'] = np.mean(scores)
+                
+                # Calculate cooperation rate
+                total_moves = (self.results['strategy_performance'][strategy]['total_cooperation'] + 
+                              self.results['strategy_performance'][strategy]['total_defection'])
+                
+                if total_moves > 0:
+                    coop_rate = self.results['strategy_performance'][strategy]['total_cooperation'] / total_moves
+                    self.results['strategy_performance'][strategy]['cooperation_rate'] = coop_rate
+                else:
+                    self.results['strategy_performance'][strategy]['cooperation_rate'] = 0
+    
+    def reset(self):
+        """Reset the simulation to initial state"""
+        self.round = 0
+        self.results = self._initialize_results()
+        
+        # Reset all agents
+        for agent in self.agents:
+            agent['strategy'].reset()
+        
+        self.initialize_agents()
+    
+    @abstractmethod
+    def run_round(self):
+        """Run a single round of the simulation. Must be implemented by subclasses."""
+        pass
+    
+    @abstractmethod
+    def calculate_score(self, *args):
+        """Calculate scores for game interactions. Must be implemented by subclasses."""
+        pass
+
+
+class PrisonersDilemmaSimulation(Simulation):
+    """Simulation for Prisoner's Dilemma games"""
     
     def run_round(self):
         """Run a single round of the simulation"""
@@ -212,13 +291,6 @@ class PrisonersDilemmaSimulation:
         
         return round_results
     
-    def track_strategy_stats(self, strategy_type, move):
-        """Track strategy performance statistics"""
-        if move == 'C':
-            self.results['strategy_performance'][strategy_type]['total_cooperation'] += 1
-        else:
-            self.results['strategy_performance'][strategy_type]['total_defection'] += 1
-    
     def calculate_score(self, move1, move2):
         """Calculate scores for a pair of moves"""
         # Get custom payoff values from config if they exist, otherwise use defaults
@@ -236,112 +308,66 @@ class PrisonersDilemmaSimulation:
             return T, S  # Player 1 defects, Player 2 cooperates: Temptation, Sucker
         else:  # Both defect
             return P, P  # Punishment
-    
-    def run_simulation(self, rounds=None):
-        """Run the full simulation for specified number of rounds"""
-        if rounds is None:
-            rounds = self.config.get('rounds', 100)
-        
-        for _ in range(rounds):
-            self.run_round()
-        
-        # Calculate final statistics
-        self.calculate_final_stats()
-        
-        return self.results
-    
-    def calculate_final_stats(self):
-        """Calculate final statistics for the simulation"""
-        # Calculate average scores per strategy
-        strategy_scores = {}
-        for agent in self.agents:
-            strategy = agent['type']
-            if strategy not in strategy_scores:
-                strategy_scores[strategy] = []
-            strategy_scores[strategy].append(agent['strategy'].score)
-        
-        # Update strategy performance with average scores
-        for strategy, scores in strategy_scores.items():
-            self.results['strategy_performance'][strategy]['avg_score'] = np.mean(scores)
-            
-            # Calculate cooperation rate
-            total_moves = (self.results['strategy_performance'][strategy]['total_cooperation'] + 
-                          self.results['strategy_performance'][strategy]['total_defection'])
-            
-            if total_moves > 0:
-                coop_rate = self.results['strategy_performance'][strategy]['total_cooperation'] / total_moves
-                self.results['strategy_performance'][strategy]['cooperation_rate'] = coop_rate
-            else:
-                self.results['strategy_performance'][strategy]['cooperation_rate'] = 0
-    
-    def reset(self):
-        """Reset the simulation to initial state"""
-        self.round = 0
-        self.results = {
-            'rounds': [],
-            'scores': {},
-            'strategy_performance': {},
-            'overall_cooperation': 0,
-            'overall_defection': 0
-        }
-        
-        # Reset all agents
-        for agent in self.agents:
-            agent['strategy'].reset()
-        
-        self.initialize_agents()
 
-class UltimatumGameSimulation:
+class UltimatumGameSimulation(Simulation):
     """Simulation for Ultimatum Game"""
     
-    def __init__(self, config):
-        self.config = config
-        self.agents = []
-        self.round = 0
-        self.results = {
-            'rounds': [],
-            'scores': {},
-            'strategy_performance': {}
-        }
-        self.initialize_agents()
+    def _initialize_results(self):
+        """Initialize results structure specific to Ultimatum Game"""
+        results = super()._initialize_results()
+        # Add any Ultimatum Game specific result fields here
+        results.update({
+            'total_offers': 0,
+            'total_acceptances': 0,
+            'total_rejections': 0
+        })
+        return results
     
-    def initialize_agents(self):
-        """Initialize agents for ultimatum game"""
-        # Implementation would be similar to PrisonersDilemma but with
-        # different strategies specific to ultimatum game
+    def run_round(self):
+        """Run a single round of the Ultimatum Game"""
+        # TODO: Implement Ultimatum Game specific round logic
+        # This would involve proposer-responder pairs, offers, and accept/reject decisions
         pass
-        
-    # Additional methods would be implemented similar to PrisonersDilemma
-    # but adapted for Ultimatum Game rules
+    
+    def calculate_score(self, offer, response):
+        """Calculate scores for Ultimatum Game interactions"""
+        # TODO: Implement Ultimatum Game scoring
+        # Proposer gets (total - offer) if accepted, 0 if rejected
+        # Responder gets offer if accepted, 0 if rejected
+        pass
 
-class GameOfChickenSimulation:
+class GameOfChickenSimulation(Simulation):
     """Simulation for Game of Chicken"""
     
-    def __init__(self, config):
-        self.config = config
-        self.agents = []
-        self.round = 0
-        self.results = {
-            'rounds': [],
-            'scores': {},
-            'strategy_performance': {}
-        }
-        self.initialize_agents()
+    def _initialize_results(self):
+        """Initialize results structure specific to Game of Chicken"""
+        results = super()._initialize_results()
+        # Add any Game of Chicken specific result fields here
+        results.update({
+            'total_swerves': 0,
+            'total_straight': 0,
+            'total_crashes': 0
+        })
+        return results
     
-    def initialize_agents(self):
-        """Initialize agents for Game of Chicken"""
-        # Implementation would be similar to PrisonersDilemma but with
-        # different strategies specific to Game of Chicken
+    def run_round(self):
+        """Run a single round of the Game of Chicken"""
+        # TODO: Implement Game of Chicken specific round logic
+        # This would involve pairs of agents choosing to swerve or go straight
         pass
-        
-    # Additional methods would be implemented similar to PrisonersDilemma
-    # but adapted for Game of Chicken rules
+    
+    def calculate_score(self, move1, move2):
+        """Calculate scores for Game of Chicken interactions"""
+        # TODO: Implement Game of Chicken scoring
+        # Different payoff matrix than Prisoner's Dilemma
+        # Typically: both swerve = tie, one swerves = winner/loser, both straight = crash (both lose)
+        pass
 
 class SimulationFactory:
     """Factory class to create the appropriate simulation based on game type"""
     
     @staticmethod
-    def create_simulation(config):
+    def create_simulation(config) -> Simulation:
         """Create and return a simulation based on game type.
         
         Args:
