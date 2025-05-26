@@ -1,0 +1,60 @@
+# Strategy Descriptions Configuration
+# This file contains detailed descriptions for all game theory strategies
+# used in the social dilemmas simulation platform.
+
+strategies:
+  all_cooperate:
+    name: "Always Cooperate"
+    description: "This strategy always chooses to cooperate regardless of what the opponent does."
+    behavior: "Always plays C (cooperate)."
+    strengths: "Works well in environments with many cooperative agents."
+    weaknesses: "Very vulnerable to exploitation by defectors."
+    
+  all_defect:
+    name: "Always Defect"
+    description: "This strategy always chooses to defect regardless of what the opponent does."
+    behavior: "Always plays D (defect)."
+    strengths: "Cannot be exploited, and maximizes gain against cooperators."
+    weaknesses: "Performs poorly against other defectors and strategies that retaliate."
+    
+  tit_for_tat:
+    name: "Tit for Tat"
+    description: "Cooperates on first move, then copies opponent's previous move. This strategy won Axelrod's famous tournament."
+    behavior: "Starts with C, then mirrors what opponent did in previous round."
+    strengths: "Simple, robust, and forgiving. Rewards cooperation while punishing defection."
+    weaknesses: "Can get stuck in bad cycles after noise/mistakes."
+    
+  tit_for_2_tat:
+    name: "Tit for 2 Tat"
+    description: "More forgiving version of Tit for Tat. Only defects if opponent defects twice in a row."
+    behavior: "Starts with C, defects only after two consecutive defections from opponent."
+    strengths: "Very forgiving, robust against occasional defection."
+    weaknesses: "Can be exploited by strategies that alternate cooperation and defection."
+    
+  2_tit_for_tat:
+    name: "2 Tit for Tat"
+    description: "More punishing version of Tit for Tat. Defects twice after opponent defects once."
+    behavior: "Starts with C, retaliates with two Ds after opponent defects."
+    strengths: "Strongly discourages defection with double punishment."
+    weaknesses: "Not forgiving, can trigger long defection cycles."
+    
+  random:
+    name: "Random"
+    description: "Randomly chooses to cooperate or defect with equal probability."
+    behavior: "50% chance to play C or D each round."
+    strengths: "Unpredictable, cannot be exploited by pattern recognition."
+    weaknesses: "Sub-optimal performance since it has no strategy."
+    
+  pavlov:
+    name: "Pavlov (Win-Stay, Lose-Shift)"
+    description: "Changes move if previous outcome was poor, repeats move if previous outcome was good."
+    behavior: "Starts with C. If it got a good outcome (CC or DC), repeats last move. If it got bad outcome (CD or DD), switches."
+    strengths: "Performs well in evolving populations, can establish cooperation after mutual defection."
+    weaknesses: "Can be exploited by consistent defectors."
+    
+  grudger:
+    name: "Grudger (Grim Trigger)"
+    description: "Cooperates until opponent defects, then always defects forever."
+    behavior: "Starts with C, switches to all D permanently after first defection by opponent."
+    strengths: "Cannot be exploited more than once."
+    weaknesses: "Extremely unforgiving, never recovers cooperation after a single defection." 

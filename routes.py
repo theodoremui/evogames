@@ -48,6 +48,7 @@ from utils import (
     save_results, load_results, get_results_list,
     validate_config
 )
+from config_service import get_strategy_descriptions
 
 @app.route('/')
 def index():
@@ -59,65 +60,13 @@ def index():
     configs_response = get_config_list()
     configs = configs_response.get('configs', []) if configs_response.get('success', False) else []
     
-    # Define detailed strategy descriptions for tooltips
-    strategy_descriptions = {
-        'all_cooperate': """
-            <strong>Always Cooperate</strong><br>
-            This strategy always chooses to cooperate regardless of what the opponent does.<br><br>
-            <strong>Behavior:</strong> Always plays C (cooperate).<br>
-            <strong>Strengths:</strong> Works well in environments with many cooperative agents.<br>
-            <strong>Weaknesses:</strong> Very vulnerable to exploitation by defectors.
-        """,
-        'all_defect': """
-            <strong>Always Defect</strong><br>
-            This strategy always chooses to defect regardless of what the opponent does.<br><br>
-            <strong>Behavior:</strong> Always plays D (defect).<br>
-            <strong>Strengths:</strong> Cannot be exploited, and maximizes gain against cooperators.<br>
-            <strong>Weaknesses:</strong> Performs poorly against other defectors and strategies that retaliate.
-        """,
-        'tit_for_tat': """
-            <strong>Tit for Tat</strong><br>
-            Cooperates on first move, then copies opponent's previous move. This strategy won Axelrod's famous tournament.<br><br>
-            <strong>Behavior:</strong> Starts with C, then mirrors what opponent did in previous round.<br>
-            <strong>Strengths:</strong> Simple, robust, and forgiving. Rewards cooperation while punishing defection.<br>
-            <strong>Weaknesses:</strong> Can get stuck in bad cycles after noise/mistakes.
-        """,
-        'tit_for_2_tat': """
-            <strong>Tit for 2 Tat</strong><br>
-            More forgiving version of Tit for Tat. Only defects if opponent defects twice in a row.<br><br>
-            <strong>Behavior:</strong> Starts with C, defects only after two consecutive defections from opponent.<br>
-            <strong>Strengths:</strong> Very forgiving, robust against occasional defection.<br>
-            <strong>Weaknesses:</strong> Can be exploited by strategies that alternate cooperation and defection.
-        """,
-        '2_tit_for_tat': """
-            <strong>2 Tit for Tat</strong><br>
-            More punishing version of Tit for Tat. Defects twice after opponent defects once.<br><br>
-            <strong>Behavior:</strong> Starts with C, retaliates with two Ds after opponent defects.<br>
-            <strong>Strengths:</strong> Strongly discourages defection with double punishment.<br>
-            <strong>Weaknesses:</strong> Not forgiving, can trigger long defection cycles.
-        """,
-        'random': """
-            <strong>Random</strong><br>
-            Randomly chooses to cooperate or defect with equal probability.<br><br>
-            <strong>Behavior:</strong> 50% chance to play C or D each round.<br>
-            <strong>Strengths:</strong> Unpredictable, cannot be exploited by pattern recognition.<br>
-            <strong>Weaknesses:</strong> Sub-optimal performance since it has no strategy.
-        """,
-        'pavlov': """
-            <strong>Pavlov (Win-Stay, Lose-Shift)</strong><br>
-            Changes move if previous outcome was poor, repeats move if previous outcome was good.<br><br>
-            <strong>Behavior:</strong> Starts with C. If it got a good outcome (CC or DC), repeats last move. If it got bad outcome (CD or DD), switches.<br> 
-            <strong>Strengths:</strong> Performs well in evolving populations, can establish cooperation after mutual defection.<br>
-            <strong>Weaknesses:</strong> Can be exploited by consistent defectors.
-        """,
-        'grudger': """
-            <strong>Grudger (Grim Trigger)</strong><br>
-            Cooperates until opponent defects, then always defects forever.<br><br>
-            <strong>Behavior:</strong> Starts with C, switches to all D permanently after first defection by opponent.<br>
-            <strong>Strengths:</strong> Cannot be exploited more than once.<br>
-            <strong>Weaknesses:</strong> Extremely unforgiving, never recovers cooperation after a single defection.
-        """
-    }
+    # Load strategy descriptions from configuration
+    try:
+        strategy_descriptions = get_strategy_descriptions()
+    except Exception as e:
+        # Log the error and provide fallback
+        app.logger.error(f"Failed to load strategy descriptions: {str(e)}")
+        strategy_descriptions = {}
     
     return render_template('index.html', 
                           strategies=strategies, 
