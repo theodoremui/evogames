@@ -12,7 +12,7 @@ from YAML configuration files. It follows SOLID principles:
 
 @author Theodore Mui
 @version 1.0.0
-@date 2025
+@date May 25, 2025
 """
 
 import os
