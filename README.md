@@ -29,6 +29,7 @@ uv sync
 
 ## Running the Evolutionary Games
 
+### For Mac/Linux Users:
 Once the libraries are installed, type at the project toplevel:
 
 ```
@@ -38,16 +39,23 @@ Once the libraries are installed, type at the project toplevel:
 If that has issues, type the following:
 
 ```
-gunicorn --bind 0.0.0.0:8000 --reuse-port --reload main:app
+gunicorn --bind 0.0.0.0:8000 --reuse-port --reload main:application
 ```
 
-If that creates problem, change the port from `8000` to `8001` (or any other port that is not being used by other processes).
+### For Windows Users:
+The application uses Waitress as the WSGI server on Windows. You have two options to run the application:
 
-If that fails, try this with the proper unused port: (in this case: 8000)
+1. Using Waitress (Production-ready):
+```
+waitress-serve --host=0.0.0.0 --port=8000 main:application
+```
 
+2. Using Flask Development Server (Development with auto-reload):
 ```
-flask run --port=8000
+python main.py
 ```
+
+If you encounter port conflicts, change the port from `8000` to `8001` (or any other port that is not being used by other processes).
 
 
 ## Test driven development
